@@ -95,6 +95,21 @@ func TestParseGPT(t *testing.T) {
 	}
 }
 
+func TestParseGPTWithBlockSizeFallback(t *testing.T) {
+	disk := buildGPTDiskWithBlockSize(4096)
+
+	tbl, err := Parse(bytes.NewReader(disk), uint64(len(disk)), Options{Type: TypeGPT})
+	if err != nil {
+		t.Fatalf("parse gpt with fallback failed: %v", err)
+	}
+	if tbl.Type != TypeGPT {
+		t.Fatalf("type mismatch: got %s", tbl.Type)
+	}
+	if tbl.BlockSize != 4096 {
+		t.Fatalf("expected detected block size 4096, got %d", tbl.BlockSize)
+	}
+}
+
 func TestParseAutoDetectGPT(t *testing.T) {
 	disk := buildGPTDisk()
 
@@ -326,6 +341,21 @@ func TestParseGPTRejectsMalformedInputs(t *testing.T) {
 	}
 }
 
+func TestParseGPTDisableCRCAcceptsBadCRC(t *testing.T) {
+	disk := buildGPTDisk()
+	bs := 512
+	binary.LittleEndian.PutUint32(disk[bs+16:bs+20], 0)
+	binary.LittleEndian.PutUint32(disk[bs+88:bs+92], 0)
+
+	tbl, err := Parse(bytes.NewReader(disk), uint64(len(disk)), Options{Type: TypeGPT, GPTDisableCRC: true})
+	if err != nil {
+		t.Fatalf("expected parse success when CRC is disabled, got: %v", err)
+	}
+	if tbl.Type != TypeGPT {
+		t.Fatalf("type mismatch: got %s", tbl.Type)
+	}
+}
+
 func expectParseFails(t *testing.T, disk []byte, opts Options) {
 	t.Helper()
 	_, err := Parse(bytes.NewReader(disk), uint64(len(disk)), opts)
@@ -373,8 +403,11 @@ func buildMBRWithBrokenExtendedChainDisk() []byte {
 }
 
 func buildGPTDisk() []byte {
+	return buildGPTDiskWithBlockSize(512)
+}
+
+func buildGPTDiskWithBlockSize(bs int) []byte {
 	disk := make([]byte, 8*1024*1024)
-	bs := 512
 
 	mbr := disk[:bs]
 	binary.LittleEndian.PutUint16(mbr[510:512], 0xAA55)
@@ -409,13 +442,12 @@ func buildGPTDisk() []byte {
 		binary.LittleEndian.PutUint16(e[56+i*2:58+i*2], uint16(r))
 	}
 
-	setGPTCRCs(disk)
+	setGPTCRCs(disk, bs)
 
 	return disk
 }
 
-func setGPTCRCs(disk []byte) {
-	bs := 512
+func setGPTCRCs(disk []byte, bs int) {
 	header := disk[bs : 2*bs]
 	entryCount := binary.LittleEndian.Uint32(header[80:84])
 	entrySize := binary.LittleEndian.Uint32(header[84:88])

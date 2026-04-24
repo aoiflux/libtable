@@ -68,14 +68,30 @@ func bsdTypeName(t byte) string {
 		return "Unused (0x00)"
 	case 1:
 		return "Swap (0x01)"
+	case 2:
+		return "Version 6 (0x02)"
+	case 3:
+		return "Version 7 (0x03)"
+	case 4:
+		return "System V (0x04)"
+	case 5:
+		return "4.1BSD (0x05)"
+	case 6:
+		return "Eighth Edition (0x06)"
 	case 7:
 		return "4.2BSD (0x07)"
 	case 8:
 		return "MSDOS (0x08)"
 	case 9:
 		return "4.4LFS (0x09)"
+	case 10:
+		return "Unknown (0x0A)"
+	case 11:
+		return "HPFS (0x0B)"
 	case 12:
 		return "ISO9660 (0x0C)"
+	case 13:
+		return "Boot (0x0D)"
 	case 14:
 		return "Vinum (0x0E)"
 	default:

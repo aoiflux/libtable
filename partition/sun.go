@@ -134,10 +134,16 @@ func sunTypeName(t uint16) string {
 		return "/usr/ (0x04)"
 	case 5:
 		return "backup (0x05)"
+	case 6:
+		return "stand (0x06)"
 	case 7:
 		return "/var/ (0x07)"
 	case 8:
 		return "/home/ (0x08)"
+	case 9:
+		return "alt sector (0x09)"
+	case 10:
+		return "cachefs (0x0A)"
 	default:
 		return fmt.Sprintf("Unknown Type (0x%04x)", t)
 	}

@@ -22,6 +22,7 @@ It is designed to be easy to embed in tools, scripts, and forensic workflows.
 - Safety checks for malformed input:
   - bounds checks
   - GPT CRC validation
+    - GPT block-size probing (512..8192) for header/table discovery
   - malformed chain handling for extended MBR entries
 
 ## Install
@@ -75,6 +76,7 @@ func main() {
 - `Type`: choose a specific parser, or `TypeUnknown` for autodetect
 - `Offset`: byte offset where partition parsing should start
 - `BlockSize`: sector size used by parser (defaults to 512 when zero)
+- `GPTDisableCRC`: skip GPT header/table CRC checks for compatibility parsing
 
 Available types:
 

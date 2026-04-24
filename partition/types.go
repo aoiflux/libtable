@@ -48,6 +48,9 @@ type Options struct {
 	Offset    uint64
 	BlockSize uint32
 	Type      TableType
+	// GPTDisableCRC skips GPT header and entry-table CRC checks for compatibility
+	// with parsers that accept GPT structures without validating CRC values.
+	GPTDisableCRC bool
 }
 
 func (o Options) withDefaults() Options {

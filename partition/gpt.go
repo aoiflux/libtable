@@ -13,6 +13,36 @@ const (
 )
 
 func parseGPT(img *imageReader) (*Table, error) {
+	candidateSizes := []uint32{img.blockSize, 512, 1024, 2048, 4096, 8192}
+	seen := make(map[uint32]struct{}, len(candidateSizes))
+	var lastErr error
+
+	for _, bs := range candidateSizes {
+		if bs == 0 {
+			continue
+		}
+		if _, ok := seen[bs]; ok {
+			continue
+		}
+		seen[bs] = struct{}{}
+
+		alt := *img
+		alt.blockSize = bs
+
+		t, err := parseGPTWithBlockSize(&alt)
+		if err == nil {
+			return t, nil
+		}
+		lastErr = err
+	}
+
+	if lastErr == nil {
+		lastErr = fmt.Errorf("%w: gpt parse failed", ErrInvalidTable)
+	}
+	return nil, lastErr
+}
+
+func parseGPTWithBlockSize(img *imageReader) (*Table, error) {
 	t, err := parseGPTPrimary(img)
 	if err == nil {
 		return t, nil
@@ -57,15 +87,17 @@ func parseGPTAt(img *imageReader, headerLBA uint64, isBackup bool) (*Table, erro
 		return nil, fmt.Errorf("%w: gpt header size invalid", ErrInvalidTable)
 	}
 
-	storedHeaderCRC := le32(hdr[16:20])
-	headerForCRC := make([]byte, headerSize)
-	copy(headerForCRC, hdr[:headerSize])
-	for i := 16; i < 20 && i < len(headerForCRC); i++ {
-		headerForCRC[i] = 0
-	}
-	computedHeaderCRC := crc32.ChecksumIEEE(headerForCRC)
-	if computedHeaderCRC != storedHeaderCRC {
-		return nil, fmt.Errorf("%w: gpt header crc mismatch", ErrInvalidTable)
+	if !img.gptDisableCRC {
+		storedHeaderCRC := le32(hdr[16:20])
+		headerForCRC := make([]byte, headerSize)
+		copy(headerForCRC, hdr[:headerSize])
+		for i := 16; i < 20 && i < len(headerForCRC); i++ {
+			headerForCRC[i] = 0
+		}
+		computedHeaderCRC := crc32.ChecksumIEEE(headerForCRC)
+		if computedHeaderCRC != storedHeaderCRC {
+			return nil, fmt.Errorf("%w: gpt header crc mismatch", ErrInvalidTable)
+		}
 	}
 
 	tableStart := le64(hdr[72:80])
@@ -93,9 +125,11 @@ func parseGPTAt(img *imageReader, headerLBA uint64, isBackup bool) (*Table, erro
 		if err != nil {
 			return nil, wrapInvalid(err, "gpt: read partition table for crc")
 		}
-		computedTableCRC := crc32.ChecksumIEEE(tableRaw[:totalEntryBytes])
-		if computedTableCRC != storedTableCRC {
-			return nil, fmt.Errorf("%w: gpt entry table crc mismatch", ErrInvalidTable)
+		if !img.gptDisableCRC {
+			computedTableCRC := crc32.ChecksumIEEE(tableRaw[:totalEntryBytes])
+			if computedTableCRC != storedTableCRC {
+				return nil, fmt.Errorf("%w: gpt entry table crc mismatch", ErrInvalidTable)
+			}
 		}
 	}
 

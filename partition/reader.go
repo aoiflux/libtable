@@ -7,19 +7,21 @@ import (
 )
 
 type imageReader struct {
-	r         io.ReaderAt
-	sizeBytes uint64
-	offset    uint64
-	blockSize uint32
+	r             io.ReaderAt
+	sizeBytes     uint64
+	offset        uint64
+	blockSize     uint32
+	gptDisableCRC bool
 }
 
 func newImageReader(r io.ReaderAt, sizeBytes uint64, opts Options) *imageReader {
 	opts = opts.withDefaults()
 	return &imageReader{
-		r:         r,
-		sizeBytes: sizeBytes,
-		offset:    opts.Offset,
-		blockSize: opts.BlockSize,
+		r:             r,
+		sizeBytes:     sizeBytes,
+		offset:        opts.Offset,
+		blockSize:     opts.BlockSize,
+		gptDisableCRC: opts.GPTDisableCRC,
 	}
 }
 
