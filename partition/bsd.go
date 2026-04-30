@@ -34,6 +34,7 @@ func parseBSD(img *imageReader) (*Table, error) {
 	})
 
 	max := img.maxLBA()
+	hasBounds := img.hasKnownSize()
 	base := 148
 	for i := uint16(0); i < numParts; i++ {
 		off := base + int(i)*16
@@ -43,7 +44,7 @@ func parseBSD(img *imageReader) (*Table, error) {
 		if size == 0 {
 			continue
 		}
-		if i < 2 && start > max {
+		if hasBounds && i < 2 && start > max {
 			return nil, fmt.Errorf("%w: bsd start out of image bounds", ErrInvalidTable)
 		}
 		t.Partitions = append(t.Partitions, Partition{
@@ -58,7 +59,9 @@ func parseBSD(img *imageReader) (*Table, error) {
 	}
 
 	sort.Slice(t.Partitions, func(i, j int) bool { return t.Partitions[i].StartLBA < t.Partitions[j].StartLBA })
-	addUnallocated(t, img.maxLBA())
+	if hasBounds {
+		addUnallocated(t, max)
+	}
 	return t, nil
 }
 

@@ -39,6 +39,10 @@ func New() *Parser {
 	return partition.New()
 }
 
-func Parse(r io.ReaderAt, sizeBytes uint64, opts Options) (*Table, error) {
-	return partition.Parse(r, sizeBytes, opts)
+func Parse(r io.ReaderAt, sizeBytes uint64, opts Options, tableOffset ...uint64) (*Table, error) {
+	return partition.Parse(r, sizeBytes, opts, tableOffset...)
+}
+
+func ParseUnknownSize(r io.ReaderAt, opts Options, tableOffset ...uint64) (*Table, error) {
+	return partition.ParseUnknownSize(r, opts, tableOffset...)
 }

@@ -40,6 +40,7 @@ func parseMacWithBlock(img *imageReader) (*Table, error) {
 
 	t := &Table{Type: TypeMac, BlockSize: img.blockSize, Offset: img.offset}
 	max := img.maxLBA()
+	hasBounds := img.hasKnownSize()
 	for i := uint32(0); i < count; i++ {
 		buf, err := img.readLBA(1 + uint64(i))
 		if err != nil {
@@ -54,7 +55,7 @@ func parseMacWithBlock(img *imageReader) (*Table, error) {
 		if length == 0 {
 			continue
 		}
-		if i < 2 && start > max {
+		if hasBounds && i < 2 && start > max {
 			return nil, fmt.Errorf("%w: mac start out of image bounds", ErrInvalidTable)
 		}
 		flags := PartFlagAlloc
@@ -83,6 +84,8 @@ func parseMacWithBlock(img *imageReader) (*Table, error) {
 		SlotNumber:  -1,
 	})
 	sort.Slice(t.Partitions, func(i, j int) bool { return t.Partitions[i].StartLBA < t.Partitions[j].StartLBA })
-	addUnallocated(t, img.maxLBA())
+	if hasBounds {
+		addUnallocated(t, max)
+	}
 	return t, nil
 }

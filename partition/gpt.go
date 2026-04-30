@@ -66,6 +66,9 @@ func parseGPTPrimary(img *imageReader) (*Table, error) {
 }
 
 func parseGPTSecondary(img *imageReader) (*Table, error) {
+	if !img.hasKnownSize() {
+		return nil, fmt.Errorf("%w: backup gpt requires known image size", ErrInvalidTable)
+	}
 	max := img.maxLBA()
 	if max < 2 {
 		return nil, fmt.Errorf("%w: image too small for backup gpt", ErrInvalidTable)
@@ -113,11 +116,13 @@ func parseGPTAt(img *imageReader, headerLBA uint64, isBackup bool) (*Table, erro
 	totalEntryBytes := uint64(entryCount) * uint64(entrySize)
 	tableBlocks := (totalEntryBytes + uint64(img.blockSize) - 1) / uint64(img.blockSize)
 
-	if tableStart >= img.maxLBA() {
-		return nil, fmt.Errorf("%w: gpt table start outside image", ErrInvalidTable)
-	}
-	if tableStart+tableBlocks > img.maxLBA() {
-		return nil, fmt.Errorf("%w: gpt table extends past image bounds", ErrInvalidTable)
+	if img.hasKnownSize() {
+		if tableStart >= img.maxLBA() {
+			return nil, fmt.Errorf("%w: gpt table start outside image", ErrInvalidTable)
+		}
+		if tableStart+tableBlocks > img.maxLBA() {
+			return nil, fmt.Errorf("%w: gpt table extends past image bounds", ErrInvalidTable)
+		}
 	}
 
 	if totalEntryBytes > 0 {
@@ -201,6 +206,8 @@ func parseGPTAt(img *imageReader, headerLBA uint64, isBackup bool) (*Table, erro
 	}
 
 	sort.Slice(t.Partitions, func(i, j int) bool { return t.Partitions[i].StartLBA < t.Partitions[j].StartLBA })
-	addUnallocated(t, img.maxLBA())
+	if img.hasKnownSize() {
+		addUnallocated(t, img.maxLBA())
+	}
 	return t, nil
 }

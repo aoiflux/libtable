@@ -9,6 +9,7 @@ import (
 type imageReader struct {
 	r             io.ReaderAt
 	sizeBytes     uint64
+	sizeKnown     bool
 	offset        uint64
 	blockSize     uint32
 	gptDisableCRC bool
@@ -19,6 +20,7 @@ func newImageReader(r io.ReaderAt, sizeBytes uint64, opts Options) *imageReader 
 	return &imageReader{
 		r:             r,
 		sizeBytes:     sizeBytes,
+		sizeKnown:     sizeBytes > 0,
 		offset:        opts.Offset,
 		blockSize:     opts.BlockSize,
 		gptDisableCRC: opts.GPTDisableCRC,
@@ -36,7 +38,7 @@ func (ir *imageReader) readAt(buf []byte, absOff uint64) error {
 func (ir *imageReader) readLBA(lba uint64) ([]byte, error) {
 	buf := make([]byte, ir.blockSize)
 	abs := ir.offset + lba*uint64(ir.blockSize)
-	if abs+uint64(len(buf)) > ir.sizeBytes {
+	if ir.sizeKnown && abs+uint64(len(buf)) > ir.sizeBytes {
 		return nil, io.EOF
 	}
 	if err := ir.readAt(buf, abs); err != nil {
@@ -49,7 +51,7 @@ func (ir *imageReader) readLBAN(lba uint64, count uint64) ([]byte, error) {
 	total := count * uint64(ir.blockSize)
 	buf := make([]byte, total)
 	abs := ir.offset + lba*uint64(ir.blockSize)
-	if abs+uint64(len(buf)) > ir.sizeBytes {
+	if ir.sizeKnown && abs+uint64(len(buf)) > ir.sizeBytes {
 		return nil, io.EOF
 	}
 	if err := ir.readAt(buf, abs); err != nil {
@@ -59,10 +61,14 @@ func (ir *imageReader) readLBAN(lba uint64, count uint64) ([]byte, error) {
 }
 
 func (ir *imageReader) maxLBA() uint64 {
-	if ir.blockSize == 0 || ir.sizeBytes <= ir.offset {
+	if !ir.sizeKnown || ir.blockSize == 0 || ir.sizeBytes <= ir.offset {
 		return 0
 	}
 	return (ir.sizeBytes - ir.offset) / uint64(ir.blockSize)
+}
+
+func (ir *imageReader) hasKnownSize() bool {
+	return ir.sizeKnown
 }
 
 func le16(b []byte) uint16 { return binary.LittleEndian.Uint16(b) }

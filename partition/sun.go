@@ -38,6 +38,7 @@ func parseSunSparcAt(img *imageReader, lba uint64) (*Table, error) {
 
 	t := &Table{Type: TypeSun, BlockSize: img.blockSize, Offset: img.offset}
 	max := img.maxLBA()
+	hasBounds := img.hasKnownSize()
 	for i := 0; i < numParts; i++ {
 		metaOff := 142 + i*4
 		layoutOff := 444 + i*8
@@ -48,7 +49,7 @@ func parseSunSparcAt(img *imageReader, lba uint64) (*Table, error) {
 			continue
 		}
 		start := cylConv * startCyl
-		if i < 2 && start > max {
+		if hasBounds && i < 2 && start > max {
 			return nil, fmt.Errorf("%w: sun sparc start out of bounds", ErrInvalidTable)
 		}
 		flags := PartFlagAlloc
@@ -69,7 +70,9 @@ func parseSunSparcAt(img *imageReader, lba uint64) (*Table, error) {
 		return nil, fmt.Errorf("%w: sun sparc no partitions", ErrInvalidTable)
 	}
 	sort.Slice(t.Partitions, func(i, j int) bool { return t.Partitions[i].StartLBA < t.Partitions[j].StartLBA })
-	addUnallocated(t, img.maxLBA())
+	if hasBounds {
+		addUnallocated(t, max)
+	}
 	return t, nil
 }
 
@@ -87,6 +90,7 @@ func parseSunI386At(img *imageReader, lba uint64) (*Table, error) {
 	}
 	t := &Table{Type: TypeSun, BlockSize: img.blockSize, Offset: img.offset}
 	max := img.maxLBA()
+	hasBounds := img.hasKnownSize()
 	for i := 0; i < numParts; i++ {
 		off := 72 + i*12
 		ptype := le16(buf[off : off+2])
@@ -95,7 +99,7 @@ func parseSunI386At(img *imageReader, lba uint64) (*Table, error) {
 		if size == 0 {
 			continue
 		}
-		if i < 2 && start > max {
+		if hasBounds && i < 2 && start > max {
 			return nil, fmt.Errorf("%w: sun i386 start out of bounds", ErrInvalidTable)
 		}
 		flags := PartFlagAlloc
@@ -116,7 +120,9 @@ func parseSunI386At(img *imageReader, lba uint64) (*Table, error) {
 		return nil, fmt.Errorf("%w: sun i386 no partitions", ErrInvalidTable)
 	}
 	sort.Slice(t.Partitions, func(i, j int) bool { return t.Partitions[i].StartLBA < t.Partitions[j].StartLBA })
-	addUnallocated(t, img.maxLBA())
+	if hasBounds {
+		addUnallocated(t, max)
+	}
 	return t, nil
 }
 

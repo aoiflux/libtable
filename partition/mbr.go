@@ -61,6 +61,7 @@ func parseMBR(img *imageReader, testMode bool) (*Table, error) {
 
 	added := false
 	maxAddr := img.maxLBA()
+	hasBounds := img.hasKnownSize()
 	for i := 0; i < 4; i++ {
 		off := 446 + i*16
 		ptype := sector[off+4]
@@ -69,7 +70,7 @@ func parseMBR(img *imageReader, testMode bool) (*Table, error) {
 		if size == 0 {
 			continue
 		}
-		if i < 2 && start > maxAddr {
+		if hasBounds && i < 2 && start > maxAddr {
 			return nil, fmt.Errorf("%w: mbr partition start out of bounds", ErrInvalidTable)
 		}
 		added = true
@@ -103,7 +104,9 @@ func parseMBR(img *imageReader, testMode bool) (*Table, error) {
 	}
 
 	sort.Slice(t.Partitions, func(i, j int) bool { return t.Partitions[i].StartLBA < t.Partitions[j].StartLBA })
-	addUnallocated(t, img.maxLBA())
+	if hasBounds {
+		addUnallocated(t, maxAddr)
+	}
 	return t, nil
 }
 
@@ -112,7 +115,8 @@ func parseExtendedChain(img *imageReader, t *Table, sectCur, sectBase uint64, ta
 		return fmt.Errorf("%w: extended partition chain too deep", ErrInvalidTable)
 	}
 	maxAddr := img.maxLBA()
-	if sectCur >= maxAddr || sectBase >= maxAddr {
+	hasBounds := img.hasKnownSize()
+	if hasBounds && (sectCur >= maxAddr || sectBase >= maxAddr) {
 		return fmt.Errorf("%w: extended partition table outside image bounds", ErrInvalidTable)
 	}
 
@@ -143,7 +147,7 @@ func parseExtendedChain(img *imageReader, t *Table, sectCur, sectBase uint64, ta
 		}
 		if isExtendedType(ptype) {
 			next := sectBase + start
-			if next >= maxAddr {
+			if hasBounds && next >= maxAddr {
 				return fmt.Errorf("%w: extended partition pointer outside image bounds", ErrInvalidTable)
 			}
 			for _, p := range t.Partitions {
@@ -166,7 +170,7 @@ func parseExtendedChain(img *imageReader, t *Table, sectCur, sectBase uint64, ta
 			continue
 		}
 		logicalStart := sectCur + start
-		if logicalStart >= maxAddr {
+		if hasBounds && logicalStart >= maxAddr {
 			return fmt.Errorf("%w: logical partition start outside image bounds", ErrInvalidTable)
 		}
 		t.Partitions = append(t.Partitions, Partition{

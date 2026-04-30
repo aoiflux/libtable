@@ -78,6 +78,19 @@ func main() {
 - `BlockSize`: sector size used by parser (defaults to 512 when zero)
 - `GPTDisableCRC`: skip GPT header/table CRC checks for compatibility parsing
 
+`libtable.Parse` and `(*Parser).Parse` also accept an optional `tableOffset`
+argument:
+
+- `Parse(r, sizeBytes, opts)` uses `opts.Offset`
+- `Parse(r, sizeBytes, opts, tableOffset)` overrides `opts.Offset` for that call
+- `ParseUnknownSize(r, opts)` is equivalent to `Parse(r, 0, opts)`
+- `ParseUnknownSize(r, opts, tableOffset)` is equivalent to
+  `Parse(r, 0, opts, tableOffset)`
+
+`sizeBytes` may be set to `0` when the full image size is unknown. When
+`sizeBytes` is non-zero, libtable performs stricter bounds checks and can report
+unallocated trailing space precisely.
+
 Available types:
 
 - `libtable.TypeUnknown`
@@ -144,7 +157,9 @@ Each parsed `Partition` can include:
 
 ## Best Practices
 
-- Always pass the full image size to `Parse` for correct bounds checks.
+- Pass the full image size to `Parse` when available for stricter bounds checks.
+- If size is unknown, pass `sizeBytes = 0` and parsing will rely on `ReadAt` EOF
+  behavior.
 - Use `TypeUnknown` unless you explicitly know the table type.
 - For offset-based parsing (embedded images), set `Options.Offset`.
 - For non-standard sector layouts, set `Options.BlockSize`.

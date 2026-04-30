@@ -5,16 +5,23 @@ import (
 	"io"
 )
 
-func Parse(r io.ReaderAt, sizeBytes uint64, opts Options) (*Table, error) {
-	return New().Parse(r, sizeBytes, opts)
+func Parse(r io.ReaderAt, sizeBytes uint64, opts Options, tableOffset ...uint64) (*Table, error) {
+	return New().Parse(r, sizeBytes, opts, tableOffset...)
 }
 
-func (p *Parser) Parse(r io.ReaderAt, sizeBytes uint64, opts Options) (*Table, error) {
+func ParseUnknownSize(r io.ReaderAt, opts Options, tableOffset ...uint64) (*Table, error) {
+	return Parse(r, 0, opts, tableOffset...)
+}
+
+func (p *Parser) Parse(r io.ReaderAt, sizeBytes uint64, opts Options, tableOffset ...uint64) (*Table, error) {
 	if r == nil {
 		return nil, fmt.Errorf("partition: nil reader")
 	}
-	if sizeBytes == 0 {
-		return nil, fmt.Errorf("partition: sizeBytes must be > 0")
+	if len(tableOffset) > 1 {
+		return nil, fmt.Errorf("partition: at most one table offset may be provided")
+	}
+	if len(tableOffset) == 1 {
+		opts.Offset = tableOffset[0]
 	}
 
 	img := newImageReader(r, sizeBytes, opts)
@@ -34,6 +41,10 @@ func (p *Parser) Parse(r io.ReaderAt, sizeBytes uint64, opts Options) (*Table, e
 	default:
 		return nil, fmt.Errorf("partition: unsupported requested type %q", opts.Type)
 	}
+}
+
+func (p *Parser) ParseUnknownSize(r io.ReaderAt, opts Options, tableOffset ...uint64) (*Table, error) {
+	return p.Parse(r, 0, opts, tableOffset...)
 }
 
 func autoDetect(img *imageReader) (*Table, error) {
