@@ -40,9 +40,12 @@ func New() *Parser {
 }
 
 func Parse(r io.ReaderAt, sizeBytes uint64, opts Options, tableOffset ...uint64) (*Table, error) {
+	if sizeBytes == 0 {
+		return parseUnknownSize(r, opts, tableOffset...)
+	}
 	return partition.Parse(r, sizeBytes, opts, tableOffset...)
 }
 
-func ParseUnknownSize(r io.ReaderAt, opts Options, tableOffset ...uint64) (*Table, error) {
+func parseUnknownSize(r io.ReaderAt, opts Options, tableOffset ...uint64) (*Table, error) {
 	return partition.ParseUnknownSize(r, opts, tableOffset...)
 }
