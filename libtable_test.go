@@ -87,7 +87,7 @@ func TestParseWithoutKnownSizeWithOffset(t *testing.T) {
 func TestParseUnknownSizeConvenience(t *testing.T) {
 	disk := makeSimpleMBRDisk(t)
 
-	tbl, err := ParseUnknownSize(bytes.NewReader(disk), Options{Type: TypeMBR})
+	tbl, err := Parse(bytes.NewReader(disk), 0, Options{Type: TypeMBR})
 	if err != nil {
 		t.Fatalf("ParseUnknownSize failed: %v", err)
 	}
@@ -101,7 +101,7 @@ func TestParseUnknownSizeConvenienceWithOffset(t *testing.T) {
 	prefix := make([]byte, 1536)
 	disk := append(prefix, base...)
 
-	tbl, err := ParseUnknownSize(bytes.NewReader(disk), Options{Type: TypeMBR}, uint64(len(prefix)))
+	tbl, err := Parse(bytes.NewReader(disk), 0, Options{Type: TypeMBR}, uint64(len(prefix)))
 	if err != nil {
 		t.Fatalf("ParseUnknownSize with offset failed: %v", err)
 	}
